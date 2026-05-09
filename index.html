@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Plataforma Comercial Hyundai</title>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels@2.0.0"></script>
+    <style>
+        :root { --hyundai-navy: #002C5F; --hyundai-blue: #0072BB; --grey: #F2F2F2; }
+        body { font-family: 'Roboto', sans-serif; margin: 0; background: var(--grey); overflow: hidden; }
+        #main-container { display: none; height: 100vh; flex-direction: row; }
+        
+        nav { width: 260px; background: var(--hyundai-navy); color: white; display: flex; flex-direction: column; flex-shrink: 0; }
+        .nav-logo { padding: 30px; text-align: center; font-weight: bold; font-size: 20px; border-bottom: 1px solid #ffffff11; letter-spacing: 1px; }
+        .nav-item { padding: 15px 25px; display: flex; align-items: center; cursor: pointer; transition: 0.2s; }
+        .nav-item:hover, .nav-item.active { background: var(--hyundai-blue); }
+        .nav-item i { margin-right: 15px; }
+
+        .global-filters { padding: 20px; background: #001a3a; }
+        .global-filters select { width: 100%; padding: 8px; margin: 5px 0 15px 0; border-radius: 4px; border: none; font-weight: bold; color: var(--hyundai-navy); }
+
+        main { flex-grow: 1; overflow-y: auto; display: flex; flex-direction: column; }
+        .header-bar { background: white; padding: 15px 30px; display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #ddd; position: sticky; top: 0; z-index: 100; }
+
+        .content-area { padding: 25px; }
+        .kpi-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 25px; }
+        .kpi-card { background: white; padding: 20px; border-radius: 8px; border-bottom: 4px solid var(--hyundai-blue); box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
+        .kpi-card span { font-size: 11px; color: #666; font-weight: bold; }
+        .kpi-card h2 { margin: 10px 0 0; color: var(--hyundai-navy); font-size: 28px; }
+
+        .dashboard-layout { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+        .chart-container { background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); margin-bottom: 20px; }
+        .chart-full { grid-column: span 2; }
+        
+        .table-responsive { background: white; border-radius: 8px; overflow-y: auto; max-height: 350px; border: 1px solid #ddd; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; font-size: 11px; }
+        th { background: var(--hyundai-navy); color: white; padding: 10px; position: sticky; top: 0; z-index: 10; }
+        td { padding: 8px; border-bottom: 1px solid #eee; text-align: center; }
+
+        .manual-table-container { width: 100%; background: white; border-radius: 8px; border: 1px solid #ddd; margin-bottom: 30px; overflow: hidden;}
+        .manual-table-container table { table-layout: fixed; }
+        .manual-table-container input { width: 90%; border: 1px solid #ccc; text-align: center; padding: 4px; font-size: 11px; }
+
+        .capture-box { background: white; padding: 20px; border-radius: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .input-group { display: flex; flex-direction: column; }
+        .input-group label { font-size: 10px; font-weight: bold; margin-bottom: 5px; color: var(--hyundai-navy); }
+        input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
+
+        .btn { padding: 10px 15px; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; transition: 0.3s; }
+        .btn-primary { background: var(--hyundai-blue); color: white; }
+        .btn-success { background: #28a745; color: white; }
+        .btn:disabled { background: #ccc; cursor: not-allowed; }
+
+        .section { display: none; }
+        .active-section { display: block; }
+    </style>
+</head>
+<body>
+
+    <div id="login-screen" style="position:fixed; width:100%; height:100%; background:var(--hyundai-navy); display:flex; justify-content:center; align-items:center; z-index:1000;">
+        <div style="background:white; padding:40px; border-radius:8px; text-align:center; width:300px; box-shadow: 0 10px 25px rgba(0,0,0,0.3);">
+            <h2 style="color:var(--hyundai-navy);">HYUNDAI</h2>
+            <p style="font-size:14px; color:#666;">Plataforma Comercial</p>
+            <input type="password" id="pass-input" placeholder="Contraseña" style="width:100%; margin:20px 0; box-sizing:border-box;">
+            <button class="btn btn-primary" onclick="handleLogin()" style="width:100%">INICIAR SESIÓN</button>
+            <p id="login-msg" style="color:red; font-size:12px; margin-top:15px;"></p>
+        </div>
+    </div>
+
+    <div id="main-container">
+        <nav>
+            <div class="nav-logo">COATZACOALCOS</div>
+            <div class="global-filters">
+                <label style="font-size:10px; color:white;">MES</label>
+                <select id="g-month" onchange="loadAllData()"></select>
+                <label style="font-size:10px; color:white;">AÑO</label>
+                <select id="g-year" onchange="loadAllData()"></select>
+            </div>
+            <div class="nav-item active" onclick="switchTab('dashboard', this)"><i class="material-icons">dashboard</i>Dashboard</div>
+            <div class="nav-item" onclick="switchTab('ritmo', this)"><i class="material-icons">trending_up</i>Ventas y Ritmo</div>
+            <div class="nav-item" onclick="switchTab('inventario', this)"><i class="material-icons">inventory_2</i>Inventario</div>
+            <div class="nav-item" onclick="switchTab('carga', this)"><i class="material-icons">cloud_upload</i>Carga Masiva</div>
+            <div style="flex-grow:1"></div>
+            <div class="nav-item" onclick="location.reload()" style="background:#800;"><i class="material-icons">logout</i>Salir</div>
+        </nav>
+
+        <main>
+            <div class="header-bar">
+                <h3 id="page-title" style="margin:0; color:var(--hyundai-navy);">Dashboard</h3>
+                <div id="user-info" style="color:var(--hyundai-blue); font-weight:bold;"></div>
+            </div>
+
+            <div class="content-area">
+                
+                <div id="sec-dashboard" class="section active-section">
+                    <div class="kpi-grid">
+                        <div class="kpi-card"><span>VENTAS TOTALES</span><h2 id="d-total">0</h2></div>
+                        <div class="kpi-card"><span>VENTA HMM</span><h2 id="d-hmm">0</h2></div>
+                        <div class="kpi-card"><span>% BANORTE</span><h2 id="d-banorte">0%</h2></div>
+                    </div>
+                    <div class="dashboard-layout">
+                        <div class="chart-container chart-full"><h4>Tendencia Diaria</h4><div style="height:220px;"><canvas id="chartTrend"></canvas></div></div>
+                        <div class="chart-container"><h4>Ventas / Asesor</h4><div id="cont-asesor" style="height:300px;"><canvas id="barAsesores"></canvas></div></div>
+                        <div class="chart-container"><h4>Ventas / Modelo</h4><div id="cont-modelo" style="height:300px;"><canvas id="barModelos"></canvas></div></div>
+                        <div class="chart-container chart-full"><h4>Ventas por Institución Financiera</h4><div style="height:220px;"><canvas id="barBancos"></canvas></div></div>
+                    </div>
+                </div>
+
+                <div id="sec-ritmo" class="section">
+                    <div class="capture-box">
+                        <div class="input-group"><label>BUSCAR VIN</label><div style="display:flex; gap:5px;"><input type="text" id="v-search" style="flex-grow:1;"><button class="btn btn-primary" onclick="searchVIN()"><i class="material-icons">search</i></button></div></div>
+                        <div class="input-group"><label>INFO</label><input type="text" id="v-info" readonly style="background:#f4f4f4;"></div>
+                        <div class="input-group"><label>SOLDOUT</label><input type="date" id="v-soldout"></div>
+                        <div class="input-group"><label>TOMA</label><input type="text" id="v-toma"></div>
+                        <div class="input-group"><label>CORREO 2</label><input type="text" id="v-correo2"></div>
+                        <div class="input-group"><label>ORIGEN</label><input type="text" id="v-origen"></div>
+                        <div style="grid-column: span 3; text-align:right;"><button class="btn btn-success" id="btn-save-vin" onclick="saveVINData()" disabled>ACTUALIZAR DATOS</button></div>
+                    </div>
+                    
+                    <div class="table-responsive"><table id="tableVentas"><thead><tr><th>FECHA VENTA</th><th>SOLDOUT</th><th>CARLINE</th><th>VIN</th><th>ASESOR</th><th>CLIENTE</th><th>BANCO</th></tr></thead><tbody></tbody></table></div>
+                    
+                    <div class="manual-table-container">
+                        <div style="padding:12px; background:var(--hyundai-navy); color:white; font-size:12px;"><strong>Gestión Mensual de Ventas</strong></div>
+                        <table id="tableManual"></table>
+                    </div>
+                </div>
+
+                <div id="sec-inventario" class="section">
+                    <div class="manual-table-container">
+                        <div style="padding:12px; background:var(--hyundai-navy); color:white; font-size:12px;"><strong>Gestión Mensual de Inventario Acumulado</strong></div>
+                        <table id="tableInvAcc"></table>
+                    </div>
+                    <div class="chart-container">
+                        <h4>Análisis Dinámico de Ventas (Mix)</h4>
+                        <div style="display:flex; gap:10px; margin-bottom:15px;"><select id="f-carline" onchange="renderDynamicAnalysis()" style="flex:1;"><option value="">CARLINE</option></select><select id="f-catalogo" onchange="renderDynamicAnalysis()" style="flex:1;"><option value="">CATALOGO</option></select></div>
+                        <div style="height:350px;"><canvas id="chartDynamic"></canvas></div>
+                    </div>
+                </div>
+
+                <div id="sec-carga" class="section">
+                    <div class="chart-container" style="text-align:center; padding:50px;">
+                        <i class="material-icons" style="font-size:50px; color:var(--hyundai-blue);">upload_file</i>
+                        <h3>Carga de Libro de Ventas</h3>
+                        <input type="file" id="file-excel" accept=".xlsx" style="margin:20px;">
+                        <button class="btn btn-primary" onclick="uploadExcel()" id="btn-upload">PROCESAR</button>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script>
+        const API = 'https://script.google.com/macros/s/AKfycbyagN_ockAaY-O6k2U_jSmR1VYckNKSGel6Srn7itcHLCf5c99OMAxTc6lrhX9InYi-/exec'; 
+        let rawData = []; let charts = {}; let currentVINIndex = null;
+        Chart.register(ChartDataLabels);
+
+        function handleLogin() {
+            const pass = document.getElementById('pass-input').value;
+            document.getElementById('login-msg').innerText = "Validando...";
+            fetch(API, { method: 'POST', body: JSON.stringify({ action: 'login', password: pass }) })
+            .then(r => r.json()).then(res => {
+                if(res.status === 'success') {
+                    document.getElementById('login-screen').style.display = 'none';
+                    document.getElementById('main-container').style.display = 'flex';
+                    document.getElementById('user-info').innerText = "HOLA: " + res.user;
+                    loadAllData();
+                } else { document.getElementById('login-msg').innerText = res.message; }
+            });
+        }
+
+        function switchTab(tab, el) {
+            document.querySelectorAll('.section').forEach(s => s.classList.remove('active-section'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById('sec-' + tab).classList.add('active-section');
+            el.classList.add('active');
+            let cleanTitle = el.childNodes[1].textContent || el.innerText;
+            document.getElementById('page-title').innerText = cleanTitle.trim();
+        }
+
+        function loadAllData() {
+            const m = document.getElementById('g-month').value || "TODOS";
+            const y = document.getElementById('g-year').value || "2026";
+            fetch(API, { method: 'POST', body: JSON.stringify({ action: 'getGlobalData', mes: m, year: y }) })
+            .then(r => r.json()).then(res => {
+                rawData = res.rawList;
+                fillSelect('g-month', res.availableFilters.meses, m);
+                fillSelect('g-year', res.availableFilters.years, y);
+                fillSelect('f-carline', res.availableFilters.carlines, "");
+
+                document.getElementById('d-total').innerText = res.stats.vTotal;
+                document.getElementById('d-hmm').innerText = res.stats.vHMM;
+                document.getElementById('d-banorte').innerText = res.stats.pBanorte + '%';
+
+                renderTrend(res.charts.trend);
+                renderBar('barAsesores', res.charts.asesores, 'cont-asesor', true);
+                renderBar('barModelos', res.charts.modelos, 'cont-modelo', true);
+                // Restauramos Gráfico de Bancos
+                renderBar('barBancos', res.charts.bancos, null, false);
+                
+                updateVentasTable(res.list);
+                renderManualTable(res.manualTable, y);
+                renderInvTable(res.inventoryTable, y);
+                renderDynamicAnalysis();
+            });
+        }
+
+        function renderInvTable(vals, year) {
+            const concepts = ["INVENTARIO TOTAL", "REPORTABLES", "ASIGNADOS", "PINOCHO", "COMPANY CAR", "USADOS", "DEMOS", "MESES VENTA"];
+            const meses = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+            let html = `<thead><tr><th style="width:140px; text-align:left;">CONCEPTO</th>${meses.map(m => `<th>${m}</th>`).join('')}</tr></thead><tbody>`;
+            
+            concepts.forEach((conc, rIdx) => {
+                html += `<tr><td style="text-align:left; font-weight:bold; background:#f9f9f9;">${conc}</td>`;
+                for(let cIdx=0; cIdx<12; cIdx++) {
+                    let val = vals[rIdx][cIdx] || 0;
+                    let isEditable = rIdx < 7;
+                    html += `<td>${isEditable ? `<input type="number" value="${val}" onchange="saveInvCell(${rIdx}, '${["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"][cIdx]}', ${year}, this.value)">` : `<strong>${val}</strong>`}</td>`;
+                }
+                html += `</tr>`;
+            });
+            document.getElementById('tableInvAcc').innerHTML = html + '</tbody>';
+        }
+
+        function saveInvCell(rIdx, mes, year, val) {
+            fetch(API, { method: 'POST', body: JSON.stringify({ action: 'saveInventoryCell', payload: {rowIdx: rIdx, mes: mes, year: year, value: val} }) })
+            .then(() => { loadAllData(); }); 
+        }
+
+        function renderManualTable(vals, year) {
+            const concepts = ["VENTAS", "OBJETIVO HMM", "VENTA HMM", "LOGRO %", "D. SCORE CARD", "RANKING"];
+            const meses = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC","TOTAL"];
+            let html = `<thead><tr><th style="width:140px; text-align:left;">CONCEPTO</th>${meses.map(m => `<th>${m}</th>`).join('')}</tr></thead><tbody>`;
+            concepts.forEach((conc, rIdx) => {
+                html += `<tr><td style="text-align:left; font-weight:bold; background:#f9f9f9;">${conc}</td>`;
+                for(let cIdx=0; cIdx<12; cIdx++) {
+                    let val = vals[rIdx][cIdx] || 0;
+                    let edit = [1, 4, 5].includes(rIdx);
+                    html += `<td>${edit ? `<input type="number" value="${val}" onchange="saveManual(${rIdx}, '${["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"][cIdx]}', ${year}, this.value)">` : (rIdx===3?val+'%':val)}</td>`;
+                }
+                html += `<td style="background:#eee; font-weight:bold;">${vals[rIdx][12]}${rIdx===3?'%':''}</td></tr>`;
+            });
+            document.getElementById('tableManual').innerHTML = html + '</tbody>';
+        }
+
+        function saveManual(rIdx, mes, year, val) {
+            fetch(API, { method: 'POST', body: JSON.stringify({ action: 'saveManualIndicators', payload: {rowIdx: rIdx, mes: mes, year: year, value: val} }) });
+        }
+
+        // RESTAURADO: Gráficos de Barras con Valores Visibles
+        function renderTrend(data) {
+            if(charts.trend) charts.trend.destroy();
+            charts.trend = new Chart(document.getElementById('chartTrend'), {
+                type: 'line',
+                data: { labels: Array.from({length:31}, (_,i)=>i+1), datasets: [{ data: data, borderColor: '#0072BB', fill: true, backgroundColor: 'rgba(0,114,187,0.1)', tension: 0.3 }] },
+                options: { maintainAspectRatio: false, plugins: { legend: { display: false }, datalabels: { display: false } } }
+            });
+        }
+
+        function renderBar(id, obj, contId, horizontal) {
+            if(charts[id]) charts[id].destroy();
+            const labels = Object.keys(obj);
+            const values = Object.values(obj);
+            if(contId) document.getElementById(contId).style.height = Math.max(250, (labels.length * 35)) + "px";
+            charts[id] = new Chart(document.getElementById(id), {
+                type: 'bar',
+                data: { labels: labels, datasets: [{ data: values, backgroundColor: '#002C5F' }] },
+                options: { 
+                    indexAxis: horizontal ? 'y' : 'x', 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        legend: { display: false }, 
+                        datalabels: { 
+                            color: horizontal ? '#fff' : '#000', 
+                            anchor: 'end', align: horizontal ? 'start' : 'top', font: {weight:'bold'},
+                            formatter: (val) => val > 0 ? val : '' 
+                        } 
+                    } 
+                }
+            });
+        }
+
+        // RESTAURADO: Lógica Original de V7 para Mix de Inventario (Muestra colores correctamente y % visibles)
+        function renderDynamicAnalysis() {
+            const car = document.getElementById('f-carline').value;
+            const cat = document.getElementById('f-catalogo').value;
+            let filtered = rawData; 
+            let key = 'color'; // Por defecto Mix Global de Color
+            let title = "Mix Global de Colores Vendidos";
+
+            if(car && !cat) { 
+                filtered = rawData.filter(r => r.carline === car); 
+                key = 'catalogo'; 
+                title = `Mix de Catálogos (${car})`;
+                fillSelect('f-catalogo', [...new Set(filtered.map(r => r.catalogo))], ""); 
+            } else if(car && cat) { 
+                filtered = rawData.filter(r => r.carline === car && r.catalogo === cat); 
+                key = 'color'; 
+                title = `Mix de Colores (${car} - ${cat})`;
+            }
+
+            const counts = {}; 
+            filtered.forEach(r => { let v = r[key] || "S/D"; counts[v] = (counts[v] || 0) + 1; });
+            const total = Object.values(counts).reduce((a,b)=>a+b,0);
+
+            if(charts.dynamic) charts.dynamic.destroy();
+            charts.dynamic = new Chart(document.getElementById('chartDynamic'), {
+                type: 'pie',
+                data: { 
+                    labels: Object.keys(counts), 
+                    datasets: [{ 
+                        data: Object.values(counts).map(v => ((v/total)*100).toFixed(1)), 
+                        backgroundColor: ['#002C5F','#0072BB','#A2AAAD','#666','#ED1C24','#333','#1B1C20'] 
+                    }] 
+                },
+                options: { 
+                    maintainAspectRatio: false, 
+                    plugins: { 
+                        title: { display: true, text: title },
+                        legend: { position: 'right' },
+                        datalabels: { color: '#fff', formatter: v => v + '%', font: {weight:'bold'} } 
+                    } 
+                }
+            });
+        }
+
+        // RESTAURADO: Color Verde (Fondo #e8f5e9) si tiene Soldout
+        function updateVentasTable(list) {
+            const tbody = document.querySelector('#tableVentas tbody');
+            tbody.innerHTML = list.map(r => `
+                <tr style="${r.soldout ? 'background-color:#e8f5e9;' : ''}">
+                    <td>${r.fecha}</td><td>${r.soldout||'-'}</td><td>${r.carline}</td>
+                    <td style="font-family:monospace; font-weight:bold;">${r.vin}</td>
+                    <td>${r.asesor}</td><td>${r.cliente}</td><td>${r.banco}</td>
+                </tr>
+            `).join('');
+        }
+
+        function fillSelect(id, list, current) {
+            const s = document.getElementById(id);
+            if(s.options.length > 1 && (id === 'g-month' || id === 'g-year')) return;
+            let options = (id === 'g-month' || id.includes('f-')) ? `<option value="${id==='g-month'?'TODOS':''}">${id==='g-month'?'TODOS LOS MESES':'TODOS'}</option>` : '';
+            list.forEach(i => options += `<option value="${i}" ${i==current?'selected':''}>${i}</option>`);
+            s.innerHTML = options;
+        }
+
+        function searchVIN() {
+            const v = document.getElementById('v-search').value;
+            if(!v) return;
+            fetch(API, { method: 'POST', body: JSON.stringify({ action: 'searchVIN', vin: v }) })
+            .then(r => r.json()).then(res => {
+                if(res.status === 'found') {
+                    currentVINIndex = res.index; const d = res.data;
+                    document.getElementById('v-info').value = `${d[2]} / ${d[11]}`;
+                    document.getElementById('v-soldout').value = d[9];
+                    document.getElementById('v-toma').value = d[10]||"";
+                    document.getElementById('v-correo2').value = d[14]||"";
+                    document.getElementById('v-origen').value = d[16]||"";
+                    document.getElementById('btn-save-vin').disabled = false;
+                } else alert("No encontrado");
+            });
+        }
+
+        function saveVINData() {
+            const p = { index: currentVINIndex, soldout: document.getElementById('v-soldout').value, toma: document.getElementById('v-toma').value, correo2: document.getElementById('v-correo2').value, origen: document.getElementById('v-origen').value };
+            fetch(API, { method: 'POST', body: JSON.stringify({ action: 'updateVIN', payload: p }) }).then(() => { alert("Actualizado"); loadAllData(); });
+        }
+
+        function uploadExcel() {
+            const file = document.getElementById('file-excel').files[0];
+            if(!file) return alert("Seleccione archivo");
+            const btn = document.getElementById('btn-upload');
+            btn.innerText = "PROCESANDO..."; btn.disabled = true;
+
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                const data = new Uint8Array(e.target.result);
+                const wb = XLSX.read(data, {type:'array'});
+                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
+                const payload = json.map(r => [r["NUMERO DE SERIE"]||"", r["FECHA DE VENTA"]||"", r["NOMBRE DEL VENDEDOR"]||"", r["CARLINE"]||"", r["CATALOGO"]||"", r["MODELO"]||"", r["COLOR EXTERIOR"]||"", r["VENTA TOTAL"]||0, r["TIPO DE VENTA"]||"", "", "", r["NOMBRE DEL CLIENTE"]||"", "", r["CORREO ELECTRÓNICO"]||"", "", "", ""]);
+                fetch(API, { method: 'POST', body: JSON.stringify({ action: 'upload', payload: payload }) }).then(r => r.json()).then(res => { 
+                    alert(res.message); 
+                    document.getElementById('file-excel').value = "";
+                    btn.innerText = "PROCESAR"; btn.disabled = false;
+                    loadAllData(); 
+                });
+            };
+            reader.readAsArrayBuffer(file);
+        }
+    </script>
+</body>
+</html>
