@@ -44,7 +44,7 @@
         .manual-table-container table { table-layout: fixed; }
         .manual-table-container input { width: 90%; border: 1px solid #ccc; text-align: center; padding: 4px; font-size: 11px; }
 
-        .capture-box { background: white; padding: 20px; border-radius: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; }
+        .capture-box { background: white; padding: 20px; border-radius: 8px; display: grid; grid-template-columns: repeat(3, 1fr); gap: 15px; margin-bottom: 20px; box-shadow: 0 2px 5px rgba(0,0,0,0.05); }
         .input-group { display: flex; flex-direction: column; }
         .input-group label { font-size: 10px; font-weight: bold; margin-bottom: 5px; color: var(--hyundai-navy); }
         input, select { padding: 8px; border: 1px solid #ccc; border-radius: 4px; }
@@ -56,6 +56,11 @@
 
         .section { display: none; }
         .active-section { display: block; }
+        
+        /* Ajustes UI Desempeño Asesor */
+        .table-desempeno th { font-size: 9px; text-align: center; padding: 4px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+        .table-desempeno td { font-size: 10px; text-align: center; font-weight: bold; border: 1px solid #ddd; padding: 4px; }
+        .row-label { text-align: left !important; background: #f4f4f4; width: 110px; font-size: 9px; }
     </style>
 </head>
 <body>
@@ -82,6 +87,7 @@
             <div class="nav-item active" onclick="switchTab('dashboard', this)"><i class="material-icons">dashboard</i>Dashboard</div>
             <div class="nav-item" onclick="switchTab('ritmo', this)"><i class="material-icons">trending_up</i>Ventas y Ritmo</div>
             <div class="nav-item" onclick="switchTab('inventario', this)"><i class="material-icons">inventory_2</i>Inventario</div>
+            <div class="nav-item" onclick="switchTab('desempeno', this)"><i class="material-icons">person</i>Desempeño Asesor</div>
             <div class="nav-item" onclick="switchTab('carga', this)"><i class="material-icons">cloud_upload</i>Carga Masiva</div>
             <div style="flex-grow:1"></div>
             <div class="nav-item" onclick="location.reload()" style="background:#800;"><i class="material-icons">logout</i>Salir</div>
@@ -140,6 +146,38 @@
                     </div>
                 </div>
 
+                <div id="sec-desempeno" class="section">
+                    <div class="capture-box" style="margin-bottom: 20px; display: block;">
+                        <div class="input-group">
+                            <label>SELECCIONAR ASESOR</label>
+                            <select id="filter-asesor" onchange="renderDesempeno()" style="width: 300px;">
+                                <option value="">Seleccione un asesor...</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div class="manual-table-container">
+                        <div style="padding:12px; background:var(--hyundai-navy); color:white; font-size:12px;"><strong>Resultados Acumulados del Asesor</strong></div>
+                        <table id="tableDesempeno" class="table-desempeno" style="width: 100%; table-layout: fixed;">
+                        </table>
+                    </div>
+
+                    <div class="capture-box" style="grid-template-columns: repeat(10, 1fr); gap: 8px; margin-top: 20px; padding: 15px; align-items: flex-end;">
+                        <div style="grid-column: span 10; font-weight: bold; color: var(--hyundai-navy); border-bottom: 1px solid #ddd; padding-bottom: 5px; margin-bottom: 5px;">Captura Manual del Asesor (Aplica para el mes seleccionado)</div>
+                        <div class="input-group"><label style="font-size:9px;">Leads C.</label><input type="number" id="in-lc" value="0" style="padding:6px;"></div>
+                        <div class="input-group"><label style="font-size:9px;">Leads H.</label><input type="number" id="in-lh" value="0" style="padding:6px;"></div>
+                        <div class="input-group"><label style="font-size:9px;">Pros. Piso</label><input type="number" id="in-pp" value="0" style="padding:6px;"></div>
+                        <div class="input-group"><label style="font-size:9px;">Solicitudes</label><input type="number" id="in-sol" value="0" style="padding:6px;"></div>
+                        <div class="input-group"><label style="font-size:9px;">Autorizadas</label><input type="number" id="in-aut" value="0" style="padding:6px;"></div>
+                        <div class="input-group"><label style="font-size:9px;">Gar. Ext.</label><input type="number" id="in-gar" value="0" style="padding:6px;"></div>
+                        <div class="input-group"><label style="font-size:9px;">Acc. (M)</label><input type="number" id="in-acm" value="0" style="padding:6px;"></div>
+                        <div class="input-group"><label style="font-size:9px;">Acc. ($)</label><input type="number" id="in-acd" value="0" style="padding:6px;"></div>
+                        <div class="input-group"><label style="font-size:9px;">Seg. HP</label><input type="number" id="in-shp" value="0" style="padding:6px;"></div>
+                        <div>
+                            <button class="btn btn-primary" onclick="saveDesempenoAsesor()" style="padding: 7px; font-size: 10px; width: 100%;">GUARDAR</button>
+                        </div>
+                    </div>
+                </div>
                 <div id="sec-carga" class="section">
                     <div class="chart-container" style="text-align:center; padding:50px;">
                         <i class="material-icons" style="font-size:50px; color:var(--hyundai-blue);">upload_file</i>
@@ -153,7 +191,7 @@
     </div>
 
     <script>
-        const API = 'https://script.google.com/macros/s/AKfycbyagN_ockAaY-O6k2U_jSmR1VYckNKSGel6Srn7itcHLCf5c99OMAxTc6lrhX9InYi-/exec'; 
+        const API = 'https://script.google.com/macros/s/AKfycbxCy9hi6s3A1G_PEnxB_lpVZ7CRKA18m2ZkSdeY30lQVjxd-m-aZnxZhuVWmRnMwL0_/exec'; 
         let rawData = []; let charts = {}; let currentVINIndex = null;
         Chart.register(ChartDataLabels);
 
@@ -186,6 +224,8 @@
             fetch(API, { method: 'POST', body: JSON.stringify({ action: 'getGlobalData', mes: m, year: y }) })
             .then(r => r.json()).then(res => {
                 rawData = res.rawList;
+                window.desempenoGlobal = res.desempenoData;
+                
                 fillSelect('g-month', res.availableFilters.meses, m);
                 fillSelect('g-year', res.availableFilters.years, y);
                 fillSelect('f-carline', res.availableFilters.carlines, "");
@@ -197,13 +237,15 @@
                 renderTrend(res.charts.trend);
                 renderBar('barAsesores', res.charts.asesores, 'cont-asesor', true);
                 renderBar('barModelos', res.charts.modelos, 'cont-modelo', true);
-                // Restauramos Gráfico de Bancos
                 renderBar('barBancos', res.charts.bancos, null, false);
                 
                 updateVentasTable(res.list);
                 renderManualTable(res.manualTable, y);
                 renderInvTable(res.inventoryTable, y);
                 renderDynamicAnalysis();
+                
+                populateAsesores();
+                renderDesempeno();
             });
         }
 
@@ -249,7 +291,6 @@
             fetch(API, { method: 'POST', body: JSON.stringify({ action: 'saveManualIndicators', payload: {rowIdx: rIdx, mes: mes, year: year, value: val} }) });
         }
 
-        // RESTAURADO: Gráficos de Barras con Valores Visibles
         function renderTrend(data) {
             if(charts.trend) charts.trend.destroy();
             charts.trend = new Chart(document.getElementById('chartTrend'), {
@@ -282,12 +323,11 @@
             });
         }
 
-        // RESTAURADO: Lógica Original de V7 para Mix de Inventario (Muestra colores correctamente y % visibles)
         function renderDynamicAnalysis() {
             const car = document.getElementById('f-carline').value;
             const cat = document.getElementById('f-catalogo').value;
             let filtered = rawData; 
-            let key = 'color'; // Por defecto Mix Global de Color
+            let key = 'color'; 
             let title = "Mix Global de Colores Vendidos";
 
             if(car && !cat) { 
@@ -304,14 +344,18 @@
             const counts = {}; 
             filtered.forEach(r => { let v = r[key] || "S/D"; counts[v] = (counts[v] || 0) + 1; });
             const total = Object.values(counts).reduce((a,b)=>a+b,0);
+            
+            // CORRECCIÓN 2: Modificamos las etiquetas (Labels) para que incluyan el porcentaje.
+            const chartLabels = Object.keys(counts).map(k => `${k} (${((counts[k]/total)*100).toFixed(1)}%)`);
+            const chartData = Object.values(counts).map(v => ((v/total)*100).toFixed(1));
 
             if(charts.dynamic) charts.dynamic.destroy();
             charts.dynamic = new Chart(document.getElementById('chartDynamic'), {
                 type: 'pie',
                 data: { 
-                    labels: Object.keys(counts), 
+                    labels: chartLabels, 
                     datasets: [{ 
-                        data: Object.values(counts).map(v => ((v/total)*100).toFixed(1)), 
+                        data: chartData, 
                         backgroundColor: ['#002C5F','#0072BB','#A2AAAD','#666','#ED1C24','#333','#1B1C20'] 
                     }] 
                 },
@@ -326,7 +370,6 @@
             });
         }
 
-        // RESTAURADO: Color Verde (Fondo #e8f5e9) si tiene Soldout
         function updateVentasTable(list) {
             const tbody = document.querySelector('#tableVentas tbody');
             tbody.innerHTML = list.map(r => `
@@ -340,7 +383,6 @@
 
         function fillSelect(id, list, current) {
             const s = document.getElementById(id);
-            if(s.options.length > 1 && (id === 'g-month' || id === 'g-year')) return;
             let options = (id === 'g-month' || id.includes('f-')) ? `<option value="${id==='g-month'?'TODOS':''}">${id==='g-month'?'TODOS LOS MESES':'TODOS'}</option>` : '';
             list.forEach(i => options += `<option value="${i}" ${i==current?'selected':''}>${i}</option>`);
             s.innerHTML = options;
@@ -363,9 +405,23 @@
             });
         }
 
+        // CORRECCIÓN 1: Limpieza del formulario al guardar con éxito
         function saveVINData() {
             const p = { index: currentVINIndex, soldout: document.getElementById('v-soldout').value, toma: document.getElementById('v-toma').value, correo2: document.getElementById('v-correo2').value, origen: document.getElementById('v-origen').value };
-            fetch(API, { method: 'POST', body: JSON.stringify({ action: 'updateVIN', payload: p }) }).then(() => { alert("Actualizado"); loadAllData(); });
+            fetch(API, { method: 'POST', body: JSON.stringify({ action: 'updateVIN', payload: p }) }).then(() => { 
+                alert("Actualizado"); 
+                
+                document.getElementById('v-search').value = "";
+                document.getElementById('v-info').value = "";
+                document.getElementById('v-soldout').value = "";
+                document.getElementById('v-toma').value = "";
+                document.getElementById('v-correo2').value = "";
+                document.getElementById('v-origen').value = "";
+                document.getElementById('btn-save-vin').disabled = true;
+                currentVINIndex = null;
+
+                loadAllData(); 
+            });
         }
 
         function uploadExcel() {
@@ -378,8 +434,38 @@
             reader.onload = (e) => {
                 const data = new Uint8Array(e.target.result);
                 const wb = XLSX.read(data, {type:'array'});
-                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]]);
-                const payload = json.map(r => [r["NUMERO DE SERIE"]||"", r["FECHA DE VENTA"]||"", r["NOMBRE DEL VENDEDOR"]||"", r["CARLINE"]||"", r["CATALOGO"]||"", r["MODELO"]||"", r["COLOR EXTERIOR"]||"", r["VENTA TOTAL"]||0, r["TIPO DE VENTA"]||"", "", "", r["NOMBRE DEL CLIENTE"]||"", "", r["CORREO ELECTRÓNICO"]||"", "", "", ""]);
+                const json = XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {raw:false}); 
+                
+                const payload = json.map(r => {
+                    let rawDate = r["FECHA DE VENTA"] || r["FECHA"] || "";
+                    let cleanDate = rawDate;
+                    
+                    if(typeof rawDate === 'number') {
+                        let d = new Date((rawDate - 25569) * 86400 * 1000);
+                        cleanDate = `${String(d.getUTCDate()).padStart(2,'0')}/${String(d.getUTCMonth()+1).padStart(2,'0')}/${d.getUTCFullYear()}`;
+                    }
+
+                    return [
+                        r["NUMERO DE SERIE"] || r["VIN"] || "", 
+                        cleanDate, 
+                        r["NOMBRE DEL VENDEDOR"] || r["ASESOR"] || "", 
+                        r["CARLINE"] || "", 
+                        r["CATALOGO"] || "", 
+                        r["MODELO"] || "", 
+                        r["COLOR EXTERIOR"] || r["COLOR"] || "", 
+                        r["VENTA TOTAL"] || r["PRECIO"] || 0, 
+                        r["TIPO DE VENTA"] || r["BANCO"] || "", 
+                        "", 
+                        "", 
+                        r["NOMBRE DEL CLIENTE"] || r["CLIENTE"] || "", 
+                        r["CIUDAD"] || r["Ciudad"] || "", 
+                        r["CORREO ELECTRÓNICO"] || r["CORREO"] || "", 
+                        "", 
+                        r["TELÉFONO"] || r["TELEFONO"] || r["Telefono"] || "", 
+                        "" 
+                    ]
+                });
+                
                 fetch(API, { method: 'POST', body: JSON.stringify({ action: 'upload', payload: payload }) }).then(r => r.json()).then(res => { 
                     alert(res.message); 
                     document.getElementById('file-excel').value = "";
@@ -389,6 +475,145 @@
             };
             reader.readAsArrayBuffer(file);
         }
+
+        // ================= SECCIÓN DESEMPEÑO =================
+        function populateAsesores() {
+            const asesores = [...new Set(rawData.map(r => r.asesor))].filter(a => a);
+            let html = '<option value="">Seleccione un asesor...</option>';
+            asesores.sort().forEach(a => { html += `<option value="${a}">${a}</option>`; });
+            let current = document.getElementById('filter-asesor').value;
+            document.getElementById('filter-asesor').innerHTML = html;
+            if(current) document.getElementById('filter-asesor').value = current;
+        }
+
+        function renderDesempeno() {
+            const asesor = document.getElementById('filter-asesor').value;
+            if(!asesor) {
+                document.getElementById('tableDesempeno').innerHTML = '';
+                return;
+            }
+            const year = document.getElementById('g-year').value;
+            const meses = ["ENERO","FEBRERO","MARZO","ABRIL","MAYO","JUNIO","JULIO","AGOSTO","SEPTIEMBRE","OCTUBRE","NOVIEMBRE","DICIEMBRE"];
+            const mesesShort = ["ENE","FEB","MAR","ABR","MAY","JUN","JUL","AGO","SEP","OCT","NOV","DIC"];
+            
+            let html = `<thead><tr><th style="text-align:left; width: 120px;">INDICADOR</th>`;
+            mesesShort.forEach(m => html += `<th>${m}</th>`);
+            html += `<th>TOTAL</th></tr></thead><tbody>`;
+
+            // CORRECCIÓN: Eliminamos la línea de Seminuevos.
+            const indicadores = [
+                { label: "VENTAS", key: "v_tot" },
+                { label: "LEADS CRUCES", key: "l_cruces" },
+                { label: "LEADS HMM", key: "l_hmm" },
+                { label: "VENTAS LEADS", key: "v_leads" },
+                { label: "PROSPECTOS PISO", key: "p_piso" },
+                { label: "VENTAS PISO", key: "v_piso" },
+                { label: "PENETRACIÓN PISO", key: "pen_piso", isPct: true },
+                { label: "SOLICITUDES", key: "sol" },
+                { label: "AUTORIZADAS", key: "aut" },
+                { label: "% APROBACIÓN", key: "aprob", isPct: true },
+                { label: "COMPRADAS BANORTE", key: "banorte" },
+                { label: "PENETRACIÓN BANORTE", key: "pen_banorte", isPct: true },
+                { label: "GARANTÍA EXTENDIDA", key: "garantia" },
+                { label: "ACCESORIOS (M)", key: "acc_m" },
+                { label: "ACCESORIOS ($)", key: "acc_d" },
+                { label: "TOMA DE SEMINUEVOS", key: "toma_semi" },
+                { label: "SEGUROS HP", key: "seg_hp" }
+            ];
+
+            let tableData = {};
+            indicadores.forEach(ind => { tableData[ind.key] = Array(13).fill(0); });
+
+            meses.forEach((mName, mIdx) => {
+                let ventasMes = rawData.filter(r => r.asesor === asesor && r.mes === mName && r.year === year);
+                
+                tableData["v_tot"][mIdx] = ventasMes.length;
+                tableData["v_leads"][mIdx] = ventasMes.filter(r => r.origen && r.origen.toUpperCase() === "LEADS").length;
+                tableData["v_piso"][mIdx] = ventasMes.filter(r => r.origen && r.origen.toUpperCase() === "PISO").length;
+                tableData["banorte"][mIdx] = ventasMes.filter(r => r.banco && r.banco.toUpperCase().includes("BANORTE")).length;
+                tableData["toma_semi"][mIdx] = ventasMes.filter(r => r.toma && r.toma !== "" && r.toma.toUpperCase() !== "NO").length;
+                
+                let manData = window.desempenoGlobal ? window.desempenoGlobal.find(r => r[0] === mName && r[1] == year && r[2] === asesor) : null;
+                if(manData) {
+                    tableData["l_cruces"][mIdx] = manData[3] || 0;
+                    tableData["l_hmm"][mIdx] = manData[4] || 0;
+                    tableData["p_piso"][mIdx] = manData[5] || 0;
+                    tableData["sol"][mIdx] = manData[6] || 0;
+                    tableData["aut"][mIdx] = manData[7] || 0;
+                    tableData["garantia"][mIdx] = manData[8] || 0;
+                    tableData["acc_m"][mIdx] = manData[9] || 0;
+                    tableData["acc_d"][mIdx] = manData[10] || 0;
+                    tableData["seg_hp"][mIdx] = manData[12] || 0; 
+                }
+
+                tableData["pen_piso"][mIdx] = tableData["p_piso"][mIdx] > 0 ? ((tableData["v_piso"][mIdx] / tableData["p_piso"][mIdx]) * 100).toFixed(1) : 0;
+                tableData["aprob"][mIdx] = tableData["sol"][mIdx] > 0 ? ((tableData["aut"][mIdx] / tableData["sol"][mIdx]) * 100).toFixed(1) : 0;
+                tableData["pen_banorte"][mIdx] = tableData["v_tot"][mIdx] > 0 ? ((tableData["banorte"][mIdx] / tableData["v_tot"][mIdx]) * 100).toFixed(1) : 0;
+            });
+
+            indicadores.forEach(ind => {
+                if(!ind.isPct) {
+                    tableData[ind.key][12] = tableData[ind.key].slice(0,12).reduce((a,b) => a + parseFloat(b||0), 0);
+                }
+            });
+            
+            tableData["pen_piso"][12] = tableData["p_piso"][12] > 0 ? ((tableData["v_piso"][12] / tableData["p_piso"][12]) * 100).toFixed(1) : 0;
+            tableData["aprob"][12] = tableData["sol"][12] > 0 ? ((tableData["aut"][12] / tableData["sol"][12]) * 100).toFixed(1) : 0;
+            tableData["pen_banorte"][12] = tableData["v_tot"][12] > 0 ? ((tableData["banorte"][12] / tableData["v_tot"][12]) * 100).toFixed(1) : 0;
+
+            indicadores.forEach(ind => {
+                html += `<tr><td class="row-label">${ind.label}</td>`;
+                for(let i=0; i<13; i++) {
+                    let val = tableData[ind.key][i];
+                    let isTot = (i === 12);
+                    html += `<td style="${isTot ? 'background:#eee;' : ''}">${val}${ind.isPct ? '%' : ''}</td>`;
+                }
+                html += `</tr>`;
+            });
+            
+            html += `</tbody>`;
+            document.getElementById('tableDesempeno').innerHTML = html;
+            
+            const selMes = document.getElementById('g-month').value;
+            if(selMes !== "TODOS") {
+                let mData = window.desempenoGlobal ? window.desempenoGlobal.find(r => r[0] === selMes && r[1] == year && r[2] === asesor) : null;
+                document.getElementById('in-lc').value = mData ? mData[3] : 0;
+                document.getElementById('in-lh').value = mData ? mData[4] : 0;
+                document.getElementById('in-pp').value = mData ? mData[5] : 0;
+                document.getElementById('in-sol').value = mData ? mData[6] : 0;
+                document.getElementById('in-aut').value = mData ? mData[7] : 0;
+                document.getElementById('in-gar').value = mData ? mData[8] : 0;
+                document.getElementById('in-acm').value = mData ? mData[9] : 0;
+                document.getElementById('in-acd').value = mData ? mData[10] : 0;
+                document.getElementById('in-shp').value = mData ? mData[12] : 0;
+            }
+        }
+
+        function saveDesempenoAsesor() {
+            const asesor = document.getElementById('filter-asesor').value;
+            const mes = document.getElementById('g-month').value;
+            const year = document.getElementById('g-year').value;
+            
+            if(!asesor) return alert("Seleccione un asesor.");
+            if(mes === "TODOS") return alert("Debe seleccionar un mes específico en el filtro superior para guardar datos.");
+
+            const payload = {
+                mes: mes, year: year, asesor: asesor,
+                leadsCruces: document.getElementById('in-lc').value,
+                leadsHmm: document.getElementById('in-lh').value,
+                prospectosPiso: document.getElementById('in-pp').value,
+                solicitudes: document.getElementById('in-sol').value,
+                autorizadas: document.getElementById('in-aut').value,
+                garantia: document.getElementById('in-gar').value,
+                accM: document.getElementById('in-acm').value,
+                accD: document.getElementById('in-acd').value,
+                segurosHp: document.getElementById('in-shp').value
+            };
+
+            fetch(API, { method: 'POST', body: JSON.stringify({ action: 'saveDesempeno', payload: payload }) })
+            .then(() => { alert("Datos de asesor guardados correctamente"); loadAllData(); });
+        }
+        // ================= FIN SECCIÓN DESEMPEÑO =================
     </script>
 </body>
 </html>
